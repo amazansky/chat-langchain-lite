@@ -11,7 +11,7 @@ from deepagents.backends.context_hub import ContextHubBackend
 from agent.tools import TOOLS
 from context import CONTEXT_HUB_REPO, get_prompt
 from utils.streaming import iter_text
-from utils.models import model
+from utils.models import MODEL_CONFIG, model
 
 # AGENTS.md is the agent's system prompt — pulled fresh from LangSmith
 # Context Hub at module import.
@@ -53,10 +53,20 @@ def build_agent():
     )
 
 
-def _config(thread_id: str | None = None) -> RunnableConfig:
-    metadata = {"demo": "true", "demo_type": "chat-lc-lite", "model": _model_id()}
+def _config(thread_id: str | None = None, user_id: str | None = None) -> RunnableConfig:
+    # MODEL_CONFIG is the same dict utils.models builds `model` from, so the
+    # trace label can never drift from the model actually invoked.
+    metadata = {
+        "demo": "true",
+        "demo_type": "chat-lc-lite",
+        "model": MODEL_CONFIG["model"],
+        "ls_provider": MODEL_CONFIG["provider"],
+        "environment": os.getenv("CHAT_LANGCHAIN_LITE_ENV", "demo"),
+    }
     if thread_id:
         metadata["thread_id"] = thread_id
+    if user_id:
+        metadata["user_id"] = user_id
     return RunnableConfig(
         run_name="chat-lc-lite-demo",
         metadata=metadata,
@@ -68,9 +78,11 @@ def _user_msg(question: str) -> dict:
     return {"messages": [{"role": "user", "content": question}]}
 
 
-def invoke_agent(question: str, thread_id: str | None = None) -> dict:
+def invoke_agent(
+    question: str, thread_id: str | None = None, user_id: str | None = None
+) -> dict:
     """Run the agent once. Returns {output, tools_called, messages}."""
-    result = build_agent().invoke(_user_msg(question), _config(thread_id))
+    result = build_agent().invoke(_user_msg(question), _config(thread_id, user_id))
     output = next(
         (m.content for m in reversed(result["messages"])
          if isinstance(getattr(m, "content", None), str) and m.content),
@@ -80,10 +92,12 @@ def invoke_agent(question: str, thread_id: str | None = None) -> dict:
     return {"output": output, "tools_called": tools_called, "messages": result["messages"]}
 
 
-def stream_agent(question: str, thread_id: str | None = None):
+def stream_agent(
+    question: str, thread_id: str | None = None, user_id: str | None = None
+):
     """Stream the agent's response text as it's generated."""
     for chunk, _meta in build_agent().stream(
-        _user_msg(question), _config(thread_id), stream_mode="messages"
+        _user_msg(question), _config(thread_id, user_id), stream_mode="messages"
     ):
         if isinstance(chunk, AIMessageChunk):
             yield from iter_text(chunk)
