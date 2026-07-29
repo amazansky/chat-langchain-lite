@@ -1,3 +1,5 @@
+import re
+
 from langchain_core.tools import tool
 
 # Canned documentation snippets for the most-asked LangChain ecosystem concepts.
@@ -137,6 +139,23 @@ ANTIPATTERNS = [
 ]
 
 
+# These knowledge bases only cover the LangChain ecosystem, so a lookup that
+# doesn't mention any of it has to report out-of-scope rather than return the
+# nearest LangChain answer as if it applied.
+LC_SCOPE_RE = re.compile(
+    r"lang\s?chain|langgraph|langsmith|langserve|deepagents|deep agents"
+    r"|middleware|tracing|create_agent|checkpointer|lcel",
+    re.IGNORECASE,
+)
+
+OUT_OF_SCOPE = (
+    "No LangChain-ecosystem guidance matches this request — it appears to be "
+    "outside this assistant's LangChain/LangGraph/LangSmith scope. Answer from "
+    "general expertise instead of citing this tool. If the request really is "
+    "about this ecosystem, name the product in the argument and retry."
+)
+
+
 @tool
 def lookup_concept(concept_name: str) -> str:
     """Look up a LangChain ecosystem concept (langchain, langgraph, langsmith, deep agents, middleware, tracing). Returns tagline, first release year, package name, minimum Python version, summary, and primary use case."""
@@ -157,23 +176,24 @@ def lookup_concept(concept_name: str) -> str:
 
 @tool
 def get_setup_guide(topic: str) -> str:
-    """Get a setup or how-to guide for a LangChain ecosystem topic. Topics: installation, environment, deployment, evaluation."""
-    key = topic.lower().strip()
-    for db_key, content in SETUP_GUIDES_DB.items():
-        if key in db_key or db_key in key:
-            return f"**{db_key.title()} guide:**\n\n{content}"
+    """Get a setup or how-to guide (installation, environment, deployment, evaluation) for the LangChain / LangGraph / LangSmith / Deep Agents ecosystem ONLY — the topic must name the product, e.g. "langgraph deployment"; never call this for other frameworks, cloud providers, or general infrastructure topics."""
+    if not LC_SCOPE_RE.search(topic or ""):
+        return OUT_OF_SCOPE
+    key = LC_SCOPE_RE.sub(" ", topic).lower().strip(" -_:/")
+    if key in SETUP_GUIDES_DB:
+        return f"**{key.title()} guide:**\n\n{SETUP_GUIDES_DB[key]}"
     available = ", ".join(SETUP_GUIDES_DB.keys())
     return f"Topic '{topic}' not found. Available topics: {available}"
 
 
 @tool
 def get_security_advice(query: str) -> str:
-    """Get security and best-practice advice for LangChain/LangGraph/LangSmith projects, including recommended patterns and antipatterns to avoid."""
+    """Get security and best-practice advice (recommended patterns and antipatterns) for the LangChain / LangGraph / LangSmith / Deep Agents ecosystem ONLY — never call this for other frameworks, cloud providers, or general infrastructure security questions."""
+    if not LC_SCOPE_RE.search(query or ""):
+        return OUT_OF_SCOPE
     safe_list = "\n".join(f"  ✓ {item}" for item in SAFE_PATTERNS)
     antipatterns_list = "\n".join(f"  ✗ {item}" for item in ANTIPATTERNS)
     return f"""**LangChain Best Practices**
-
-Your query: {query}
 
 **RECOMMENDED patterns:**
 {safe_list}
