@@ -25,6 +25,7 @@ model = init_chat_model(
     api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
     max_tokens=300,
     temperature=0,
+    max_retries=3,
 )
 
 # --- Anthropic ---
