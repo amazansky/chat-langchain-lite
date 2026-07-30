@@ -104,6 +104,31 @@ def _api_url() -> str:
     return url
 
 
+def _session_user_id(session) -> str:
+    """Stable per-session user id, minted alongside the chat thread."""
+    if "user_id" not in session:
+        session["user_id"] = str(uuid.uuid4())
+    return session["user_id"]
+
+
+def _run_metadata(session) -> dict:
+    """Root-run metadata: thread/user attribution plus model and environment labels."""
+    # Lazy import mirrors /gateway: keeps app startup decoupled from the model
+    # provider package (the graph has already imported utils.models in-process).
+    try:
+        from utils.models import MODEL_CONFIG
+    except Exception:
+        MODEL_CONFIG = {}
+    return {
+        "demo": "true",
+        "demo_type": APP_SLUG,
+        "thread_id": session["thread"],
+        "user_id": _session_user_id(session),
+        "model": MODEL_CONFIG.get("model", ""),
+        "environment": os.getenv("CHAT_LANGCHAIN_LITE_ENV", "demo"),
+    }
+
+
 _log = logging.getLogger(__name__)
 _LS_CLIENT: Client | None = None
 
@@ -831,6 +856,7 @@ async def index(session, new: str = "", thread: str = ""):
         session["thread"] = str(uuid.uuid4())
 
     thread_id = session["thread"]
+    _session_user_id(session)
     # Render history for the active session thread on any load except an explicit
     # "new" — so a plain refresh (no ?thread=) shows the ongoing conversation
     # instead of the empty state and silently appending into a hidden thread.
@@ -862,7 +888,7 @@ async def send(session, q: str = ""):
             stream_mode="messages-tuple",
             stream_resumable=True,
             if_not_exists="create",
-            metadata={"demo": "true", "demo_type": APP_SLUG},
+            metadata=_run_metadata(session),
             config={
                 "run_name": f"{APP_SLUG}-demo",
                 "tags": ["engine-demo", CONTEXT_HUB_REPO],
