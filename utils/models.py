@@ -14,7 +14,10 @@ from langchain.chat_models import init_chat_model
 # policies (PII / secrets / allow-lists / cost caps) are enforced.
 # MODEL_CONFIG is the single source the frontend's Gateway pane reads.
 MODEL_CONFIG = {
-    "model": "claude-sonnet-4-6",
+    # CHAT_LANGCHAIN_LITE_MODEL lets scripts swap the model for baseline
+    # experiments. It is applied here so the constructed model and the trace
+    # metadata label (agent._config) can never disagree.
+    "model": os.getenv("CHAT_LANGCHAIN_LITE_MODEL") or "claude-sonnet-4-6",
     "provider": "anthropic",
     "base_url": "https://gateway.smith.langchain.com/anthropic",
 }
