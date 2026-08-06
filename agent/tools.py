@@ -11,6 +11,14 @@ CONCEPTS_DB = {
         "min_python": "3.10+",
         "summary": "LangChain provides chains, agents, retrievers, and integrations with 700+ providers. Use it to compose LLM calls with tools, memory, and structured outputs.",
         "primary_use_case": "Composable LLM pipelines, RAG, and agents.",
+        "api_surface": (
+            "`create_agent(model=..., tools=[...], system_prompt=...)` from "
+            "`langchain.agents` builds an agent; run it with `.invoke({\"messages\": [...]})` "
+            "or `.stream(..., stream_mode=...)`. Declare tools with the `@tool` decorator "
+            "from `langchain_core.tools`. Build a chat model with "
+            "`init_chat_model(\"provider:model\")` and request typed results with "
+            "`model.with_structured_output(Schema)`."
+        ),
     },
     "langgraph": {
         "tagline": "Build stateful, multi-actor agents as graphs.",
@@ -19,6 +27,13 @@ CONCEPTS_DB = {
         "min_python": "3.7+",
         "summary": "LangGraph models agents as graphs: nodes are functions, edges define control flow, and a typed state object is passed between them. Built-in persistence (checkpointers), interrupts, and streaming.",
         "primary_use_case": "Long-running, multi-step agents and human-in-the-loop workflows.",
+        "api_surface": (
+            "`StateGraph(StateSchema)` with `.add_node(name, fn)`, `.add_edge(src, dst)`, "
+            "`.add_conditional_edges(src, router)` and the `START` / `END` sentinels from "
+            "`langgraph.graph`; finish with `.compile(checkpointer=...)`. Run the compiled "
+            "graph with `.invoke(state, config)`, `.stream(...)` or `.astream(...)`, and "
+            "pause it with `interrupt(...)` / resume with `Command(resume=...)`."
+        ),
     },
     "langsmith": {
         "tagline": "Observability and evaluation for LLM apps.",
@@ -27,6 +42,12 @@ CONCEPTS_DB = {
         "min_python": "3.9+",
         "summary": "LangSmith captures traces of every LLM/tool call, lets you create datasets and run evaluations (offline and online), and provides annotation queues for human feedback. Works with any framework, not just LangChain.",
         "primary_use_case": "Tracing, evals, prompt management, and monitoring.",
+        "api_surface": (
+            "`from langsmith import Client, traceable, evaluate`. `Client()` exposes "
+            "`create_dataset`, `create_examples` and `pull_prompt`; decorate any function "
+            "with `@traceable` to trace it; run an offline eval with "
+            "`evaluate(target_fn, data=..., evaluators=[...])`."
+        ),
     },
     "deep agents": {
         "tagline": "Long-horizon agents with planning, memory, and subagents.",
@@ -35,6 +56,15 @@ CONCEPTS_DB = {
         "min_python": "3.10+",
         "summary": "Deep Agents wraps create_agent with a TodoList planner, virtual filesystem, and SubAgentMiddleware for context isolation. Inspired by Claude Code's harness pattern.",
         "primary_use_case": "Research, coding, and other tasks that need planning and many tool calls.",
+        "api_surface": (
+            "`create_deep_agent(...)` from `deepagents` is the entrypoint. Middleware lives "
+            "under `deepagents.middleware` (e.g. "
+            "`from deepagents.middleware.filesystem import FilesystemMiddleware`) and "
+            "filesystem backends under `deepagents.backends` (e.g. "
+            "`from deepagents.backends.context_hub import ContextHubBackend`). Constructor "
+            "keyword arguments beyond these are not covered here — check "
+            "docs.langchain.com before naming them."
+        ),
     },
     "middleware": {
         "tagline": "Hooks that wrap an agent's model and tool calls.",
@@ -43,6 +73,17 @@ CONCEPTS_DB = {
         "min_python": "3.10+",
         "summary": "AgentMiddleware lets you add cross-cutting behavior (retry, fallbacks, guardrails, human-in-the-loop) without modifying the agent itself. Stack middlewares — order matters.",
         "primary_use_case": "Human approval, content guardrails, retries, and structured output.",
+        "api_surface": (
+            "Subclass `AgentMiddleware` and override only these hooks: `before_agent`, "
+            "`before_model`, `after_model`, `after_agent`, `wrap_model_call`, "
+            "`wrap_tool_call` (async variants: `abefore_agent`, `abefore_model`, "
+            "`aafter_model`, `aafter_agent`, `awrap_model_call`, `awrap_tool_call`). "
+            "No other hook names exist — `on_model_call`, `on_model_response`, "
+            "`on_model_start`, `on_model_end`, `on_llm_start` and `on_llm_end` are NEVER "
+            "dispatched, so a subclass defining them imports and instantiates cleanly "
+            "while silently never running. Attach middleware with "
+            "`create_agent(model=..., tools=[...], middleware=[MyMiddleware()])`."
+        ),
     },
     "tracing": {
         "tagline": "Capture every LLM, tool, and chain call automatically.",
@@ -51,6 +92,13 @@ CONCEPTS_DB = {
         "min_python": "3.9+",
         "summary": "Set LANGSMITH_TRACING=true and LANGSMITH_API_KEY in your env. Every LangChain/LangGraph run is traced to LangSmith automatically. For arbitrary Python functions use the @traceable decorator.",
         "primary_use_case": "Debugging agents, building eval datasets from real traffic.",
+        "api_surface": (
+            "Environment variables `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY` and "
+            "`LANGSMITH_PROJECT` turn tracing on. `from langsmith import traceable` gives "
+            "the `@traceable` decorator for arbitrary functions; per-run overrides go "
+            "through the `config` argument (`RunnableConfig(run_name=..., metadata=..., "
+            "tags=...)`)."
+        ),
     },
 }
 
@@ -139,7 +187,7 @@ ANTIPATTERNS = [
 
 @tool
 def lookup_concept(concept_name: str) -> str:
-    """Look up a LangChain ecosystem concept (langchain, langgraph, langsmith, deep agents, middleware, tracing). Returns tagline, first release year, package name, minimum Python version, summary, and primary use case."""
+    """Look up a LangChain ecosystem concept (langchain, langgraph, langsmith, deep agents, middleware, tracing). Returns tagline, first release year, package name, minimum Python version, summary, primary use case, and the concept's verified API surface (class, method, and hook names) when covered."""
     key = concept_name.lower().strip()
     for db_key, data in CONCEPTS_DB.items():
         if key in db_key or db_key in key:
@@ -150,6 +198,16 @@ def lookup_concept(concept_name: str) -> str:
             lines.append(f"- Primary use case: {data['primary_use_case']}")
             lines.append("")
             lines.append(data["summary"])
+            lines.append("")
+            if data.get("api_surface"):
+                lines.append(f"**API surface:** {data['api_surface']}")
+            else:
+                lines.append(
+                    "**API surface:** this knowledge base does not cover the API for "
+                    f"'{db_key}'. Do not state any class, method, hook, or decorator name "
+                    "for it — say the knowledge base does not cover that API and point the "
+                    "user to docs.langchain.com instead."
+                )
             return "\n".join(lines)
     available = ", ".join(k.title() for k in CONCEPTS_DB.keys())
     return f"Concept '{concept_name}' not found. Available concepts: {available}"
