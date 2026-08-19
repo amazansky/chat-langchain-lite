@@ -18,12 +18,14 @@ MODEL_CONFIG = {
     "provider": "anthropic",
     "base_url": "https://gateway.smith.langchain.com/anthropic",
 }
+# The output ceiling is env-tunable, but floored at 1024: a deployment that set
+# CHAT_LANGCHAIN_LITE_MAX_TOKENS=300 truncated answers mid-sentence.
 model = init_chat_model(
     model=MODEL_CONFIG["model"],
     model_provider=MODEL_CONFIG["provider"],
     base_url=MODEL_CONFIG["base_url"],
     api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
-    max_tokens=300,
+    max_tokens=max(int(os.getenv("CHAT_LANGCHAIN_LITE_MAX_TOKENS", "4096")), 1024),
     temperature=0,
 )
 
