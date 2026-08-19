@@ -13,12 +13,12 @@ from context import CONTEXT_HUB_REPO, get_prompt
 from utils.streaming import iter_text
 from utils.models import model
 
-# AGENTS.md is the agent's system prompt — pulled fresh from LangSmith
-# Context Hub at module import.
+# AGENTS.md is the agent's system prompt — pulled from LangSmith Context Hub in
+# build_agent() (NOT at import), so an edited prompt reaches long-lived server
+# processes instead of being frozen at the revision that existed when they booted.
 # Seed source: utils/context_hub.py (`_SEED_AGENTS_MD`), pushed to Context Hub by
 # `scripts/setup.py` (`push_agents_md()`). A prompt fix can be applied BOTH as a
 # PR to that seed AND to the live Context Hub.
-SYSTEM_PROMPT = get_prompt()
 
 # Override with CHAT_LANGCHAIN_LITE_MODEL env var — used by setup.py to seed
 # baseline experiments against a more expensive model (Sonnet) for the
@@ -48,7 +48,7 @@ def build_agent():
         # max_tokens, not sampling, so pinning temperature keeps traces consistent.
         model=model,
         tools=TOOLS,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=get_prompt(),
         middleware=[_readonly_context_hub_fs()],
     )
 
