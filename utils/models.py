@@ -9,6 +9,17 @@ from langchain.chat_models import init_chat_model
 # --- Default: OpenAI, direct ---
 # model = init_chat_model("openai:gpt-4.1-mini")
 
+# Answers truncate mid-sentence below roughly a thousand output tokens, so a
+# too-small deployment-side override is clamped rather than honored.
+MIN_MAX_TOKENS = 1024
+
+
+def _resolve_max_tokens() -> int:
+    """Read the configured output-token ceiling, never dropping below MIN_MAX_TOKENS."""
+    configured = int(os.getenv("CHAT_LANGCHAIN_LITE_MAX_TOKENS", "4096"))
+    return max(configured, MIN_MAX_TOKENS)
+
+
 # --- OpenAI via the LangSmith LLM Gateway ---
 # Routes every model call through the LangSmith Gateway so that workspace
 # policies (PII / secrets / allow-lists / cost caps) are enforced.
@@ -23,7 +34,7 @@ model = init_chat_model(
     model_provider=MODEL_CONFIG["provider"],
     base_url=MODEL_CONFIG["base_url"],
     api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
-    max_tokens=int(os.getenv("CHAT_LANGCHAIN_LITE_MAX_TOKENS", "4096")),
+    max_tokens=_resolve_max_tokens(),
     temperature=0,
 )
 
