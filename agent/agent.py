@@ -1,4 +1,5 @@
 import os
+import time
 
 from langchain.agents import create_agent
 from langchain_anthropic import ChatAnthropic
@@ -13,12 +14,31 @@ from context import CONTEXT_HUB_REPO, get_prompt
 from utils.streaming import iter_text
 from utils.models import model
 
-# AGENTS.md is the agent's system prompt — pulled fresh from LangSmith
-# Context Hub at module import.
+# AGENTS.md is the agent's system prompt — pulled from LangSmith Context Hub
+# per request, behind a short TTL. It is edited in the hub independently of this
+# process, so binding it once at module import froze whichever revision existed
+# when the server booted and long-lived replicas kept serving a stale prompt.
 # Seed source: utils/context_hub.py (`_SEED_AGENTS_MD`), pushed to Context Hub by
 # `scripts/setup.py` (`push_agents_md()`). A prompt fix can be applied BOTH as a
 # PR to that seed AND to the live Context Hub.
-SYSTEM_PROMPT = get_prompt()
+_PROMPT_TTL_SECONDS = 30.0
+_prompt_cache: tuple[float, str] | None = None
+
+
+def system_prompt() -> str:
+    """Return the Context Hub system prompt, re-pulled at most once per TTL."""
+    global _prompt_cache
+    now = time.monotonic()
+    if _prompt_cache and now - _prompt_cache[0] < _PROMPT_TTL_SECONDS:
+        return _prompt_cache[1]
+    prompt = get_prompt()
+    # get_prompt() returns "" when the hub is unreachable — keep serving the
+    # last good prompt rather than dropping the agent's instructions entirely.
+    if not prompt and _prompt_cache:
+        return _prompt_cache[1]
+    _prompt_cache = (now, prompt)
+    return prompt
+
 
 # Override with CHAT_LANGCHAIN_LITE_MODEL env var — used by setup.py to seed
 # baseline experiments against a more expensive model (Sonnet) for the
@@ -48,7 +68,7 @@ def build_agent():
         # max_tokens, not sampling, so pinning temperature keeps traces consistent.
         model=model,
         tools=TOOLS,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=system_prompt(),
         middleware=[_readonly_context_hub_fs()],
     )
 
