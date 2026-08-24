@@ -23,7 +23,8 @@ model = init_chat_model(
     model_provider=MODEL_CONFIG["provider"],
     base_url=MODEL_CONFIG["base_url"],
     api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
-    max_tokens=300,
+    # Floored at 1024: a low env override truncated answers mid-sentence in prod.
+    max_tokens=max(int(os.getenv("CHAT_LANGCHAIN_LITE_MAX_TOKENS", "4096")), 1024),
     temperature=0,
 )
 
