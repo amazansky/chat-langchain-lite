@@ -51,14 +51,13 @@ def build_model(model_id: str | None = None):
         model_provider=MODEL_CONFIG["provider"],
         base_url=MODEL_CONFIG["base_url"],
         api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
-        max_tokens=300,
-        # Newer Sonnets switch extended thinking on by themselves as soon as
-        # tools are bound, and thinking tokens are spent from max_tokens. With
-        # the intentional max_tokens=300 bug that budget is often gone before
-        # any text block is emitted, so the agent returns *nothing* — blank in
-        # the UI, empty `output` in evals — instead of the truncated answer
-        # Bug 4 is supposed to demonstrate. The two can't be reconciled: the
-        # minimum thinking budget is 1024 tokens, well above our 300.
+        # This route is thinking-enabled and thinking tokens are drawn from
+        # this same output-token budget — `thinking={"type": "disabled"}` below
+        # is not honored by the gateway, so a reasoning block still lands here.
+        # The cap must therefore exceed the visible answer length by a
+        # comfortable margin; response length itself is controlled by the
+        # "under 200 words" guidance in AGENTS.md, not by max_tokens.
+        max_tokens=2000,
         thinking={"type": "disabled"},
     )
 
