@@ -18,12 +18,24 @@ MODEL_CONFIG = {
     "provider": "anthropic",
     "base_url": "https://gateway.smith.langchain.com",
 }
+
+# The gateway model id carries a routing prefix (`bedrock/`) that LangSmith
+# cannot match against its price table, so LLM spans landed with token counts
+# but null costs. Client-level `metadata` takes precedence over the ls_* params
+# a chat model derives from its own fields, so it is what gives these spans a
+# priceable identity — without changing the id actually sent to the gateway.
+LS_MODEL_NAME = MODEL_CONFIG["model"].rsplit("/", 1)[-1]
+
 model = init_chat_model(
     model=MODEL_CONFIG["model"],
     model_provider=MODEL_CONFIG["provider"],
     base_url=MODEL_CONFIG["base_url"],
     api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
     max_tokens=300,
+    metadata={
+        "ls_provider": MODEL_CONFIG["provider"],
+        "ls_model_name": LS_MODEL_NAME,
+    },
 )
 
 # --- Anthropic ---
