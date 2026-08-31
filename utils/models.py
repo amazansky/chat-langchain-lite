@@ -23,7 +23,10 @@ model = init_chat_model(
     model_provider=MODEL_CONFIG["provider"],
     base_url=MODEL_CONFIG["base_url"],
     api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
-    max_tokens=300,
+    # Thinking is enabled, so reasoning tokens are drawn from this same output
+    # budget; the cap has to exceed the visible answer length by a wide margin
+    # or replies stop mid-sentence with stop_reason "max_tokens".
+    max_tokens=2000,
 )
 
 # --- Anthropic ---
