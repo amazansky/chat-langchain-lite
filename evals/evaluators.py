@@ -10,12 +10,17 @@ import os
 
 from anthropic import Anthropic
 
+from utils.provider_env import scrub_ambient_provider_env
+
 _anthropic_client = None
 
 
 def _get_anthropic_client() -> Anthropic:
     global _anthropic_client
     if _anthropic_client is None:
+        # Inherited ANTHROPIC_* vars would override the api_key below; the SDK
+        # snapshots them at construction, so scrub first. See utils/provider_env.
+        scrub_ambient_provider_env()
         _anthropic_client = Anthropic(
             api_key=os.environ["LANGSMITH_API_KEY"],
             base_url="https://gateway.smith.langchain.com",

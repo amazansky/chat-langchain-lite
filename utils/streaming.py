@@ -32,3 +32,22 @@ def iter_text(chunk: AIMessageChunk) -> Iterable[str]:
                 text = block.get("text") or ""
                 if text:
                     yield text
+
+
+def text_of(message) -> str:
+    """Flatten a whole (non-streamed) message to its user-visible text.
+
+    Same normalization as `iter_text`, for the invoke path. Needed because
+    extended-thinking models return `content` as a block list, so a plain
+    `isinstance(content, str)` check silently misses their answer.
+    """
+    content = getattr(message, "content", None)
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(
+            block.get("text") or ""
+            for block in content
+            if isinstance(block, dict) and block.get("type") == "text"
+        )
+    return ""

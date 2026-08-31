@@ -1,10 +1,17 @@
 """Centralized model initialization"""
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv(dotenv_path="../.env", override=True)
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env", override=True)
 
 from langchain.chat_models import init_chat_model
+
+from utils.provider_env import scrub_ambient_provider_env
+
+# Must run before the client below is built — the Anthropic SDK reads these
+# vars in __init__ and they can silently override `api_key=`.
+scrub_ambient_provider_env()
 
 # --- Default: OpenAI, direct ---
 # model = init_chat_model("openai:gpt-4.1-mini")
@@ -13,18 +20,44 @@ from langchain.chat_models import init_chat_model
 # Routes every model call through the LangSmith Gateway so that workspace
 # policies (PII / secrets / allow-lists / cost caps) are enforced.
 # MODEL_CONFIG is the single source the frontend's Gateway pane reads.
+DEFAULT_MODEL_ID = "bedrock/anthropic.claude-sonnet-5"
+
 MODEL_CONFIG = {
-    "model": "bedrock/anthropic.claude-sonnet-5",
+    "model": DEFAULT_MODEL_ID,
     "provider": "anthropic",
     "base_url": "https://gateway.smith.langchain.com",
 }
-model = init_chat_model(
-    model=MODEL_CONFIG["model"],
-    model_provider=MODEL_CONFIG["provider"],
-    base_url=MODEL_CONFIG["base_url"],
-    api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
-    max_tokens=300,
-)
+
+
+def resolve_model_id() -> str:
+    """The model this process should use.
+
+    `CHAT_LANGCHAIN_LITE_MODEL` overrides the default — that's how
+    `scripts/setup.py` seeds one baseline experiment per model, and how
+    `scripts/generate_traces.py` picks a cheaper model for bulk traces.
+    Read at call time, not import time, so callers can set it and then build.
+    """
+    return os.getenv("CHAT_LANGCHAIN_LITE_MODEL") or DEFAULT_MODEL_ID
+
+
+def build_model(model_id: str | None = None):
+    """Construct a gateway-backed chat model.
+
+    A factory rather than a singleton because the model id can change between
+    calls within one process (see `resolve_model_id`).
+    """
+    return init_chat_model(
+        model=model_id or resolve_model_id(),
+        model_provider=MODEL_CONFIG["provider"],
+        base_url=MODEL_CONFIG["base_url"],
+        api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
+        max_tokens=300,
+    )
+
+
+# Default instance for callers that just need "the" model (e.g. run_evals'
+# online-evaluator config). Agent builds go through build_model() instead.
+model = build_model()
 
 # --- Anthropic ---
 # model = init_chat_model("anthropic:claude-sonnet-4-5")

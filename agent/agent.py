@@ -1,8 +1,5 @@
-import os
-
 from langchain.agents import create_agent
-from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import AIMessageChunk, ToolMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
 from deepagents.middleware.filesystem import FilesystemMiddleware
@@ -10,8 +7,8 @@ from deepagents.backends.context_hub import ContextHubBackend
 
 from agent.tools import TOOLS
 from context import CONTEXT_HUB_REPO, get_prompt
-from utils.streaming import iter_text
-from utils.models import model
+from utils.streaming import iter_text, text_of
+from utils.models import build_model, resolve_model_id
 
 # AGENTS.md is the agent's system prompt — pulled fresh from LangSmith
 # Context Hub at module import.
@@ -22,12 +19,9 @@ SYSTEM_PROMPT = get_prompt()
 
 # Override with CHAT_LANGCHAIN_LITE_MODEL env var — used by setup.py to seed
 # baseline experiments against a more expensive model (Sonnet) for the
-# demo's cost/latency comparison.
-_DEFAULT_MODEL = "claude-haiku-4-5-20251001"
-
-
-def _model_id() -> str:
-    return os.getenv("CHAT_LANGCHAIN_LITE_MODEL") or _DEFAULT_MODEL
+# demo's cost/latency comparison. Resolution lives in utils/models so the
+# model actually built and the model recorded in trace metadata can't drift.
+_model_id = resolve_model_id
 
 
 # The Context Hub-backed filesystem holds the agent's OWN context (AGENTS.md,
@@ -43,10 +37,9 @@ def _readonly_context_hub_fs() -> FilesystemMiddleware:
 
 def build_agent():
     return create_agent(
-        # temperature=0 for deterministic, reproducible demo behavior — the
-        # intentional bugs (tone, scope, truncation) come from the prompt and
-        # max_tokens, not sampling, so pinning temperature keeps traces consistent.
-        model=model,
+        # Built per call so a CHAT_LANGCHAIN_LITE_MODEL set after import (as
+        # setup.py's baseline loop does) actually takes effect.
+        model=build_model(),
         tools=TOOLS,
         system_prompt=SYSTEM_PROMPT,
         middleware=[_readonly_context_hub_fs()],
@@ -71,9 +64,11 @@ def _user_msg(question: str) -> dict:
 def invoke_agent(question: str, thread_id: str | None = None) -> dict:
     """Run the agent once. Returns {output, tools_called, messages}."""
     result = build_agent().invoke(_user_msg(question), _config(thread_id))
+    # Must be an AIMessage: falling back to any str-content message would
+    # silently return the user's own question as the "answer".
     output = next(
-        (m.content for m in reversed(result["messages"])
-         if isinstance(getattr(m, "content", None), str) and m.content),
+        (text for m in reversed(result["messages"])
+         if isinstance(m, AIMessage) and (text := text_of(m))),
         "",
     )
     tools_called = [m.name for m in result["messages"] if isinstance(m, ToolMessage)]

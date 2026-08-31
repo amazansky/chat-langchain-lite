@@ -318,8 +318,8 @@ def setup_online_evaluators(api_key: str) -> list:
 # Haiku (cheap, fast) and Sonnet (more expensive, slower) in the
 # Experiments view while the PR's CI is running.
 _BASELINE_MODELS = [
-    ("claude-haiku-4-5-20251001", "haiku"),
-    ("claude-sonnet-4-6",         "sonnet"),
+    ("bedrock/anthropic.claude-haiku-4-5",  "haiku"),
+    ("bedrock/anthropic.claude-sonnet-5",   "sonnet"),
 ]
 
 

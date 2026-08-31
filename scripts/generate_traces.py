@@ -19,7 +19,7 @@ load_dotenv(override=True)
 # and the off-topic / scope signal is consistent across runs (overrides any
 # stray CHAT_LANGCHAIN_LITE_MODEL in the environment). Paired with temperature=0
 # in agent.build_agent().
-os.environ["CHAT_LANGCHAIN_LITE_MODEL"] = "claude-haiku-4-5-20251001"
+os.environ["CHAT_LANGCHAIN_LITE_MODEL"] = "bedrock/anthropic.claude-haiku-4-5"
 
 QUERIES = [
     # All queries below are chosen so the BASE content (no tone fluff) is
