@@ -40,14 +40,25 @@ def resolve_model_id() -> str:
     return os.getenv("CHAT_LANGCHAIN_LITE_MODEL") or DEFAULT_MODEL_ID
 
 
+def ls_model_identity(model_id: str) -> dict[str, str]:
+    """LangSmith model-identity metadata for a gateway-routed model id."""
+    name = model_id.rsplit("/", 1)[-1]
+    provider = MODEL_CONFIG["provider"]
+    return {
+        "ls_provider": provider,
+        "ls_model_name": name.removeprefix(f"{provider}."),
+    }
+
+
 def build_model(model_id: str | None = None):
     """Construct a gateway-backed chat model.
 
     A factory rather than a singleton because the model id can change between
     calls within one process (see `resolve_model_id`).
     """
+    resolved_model_id = model_id or resolve_model_id()
     return init_chat_model(
-        model=model_id or resolve_model_id(),
+        model=resolved_model_id,
         model_provider=MODEL_CONFIG["provider"],
         base_url=MODEL_CONFIG["base_url"],
         api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
@@ -60,6 +71,11 @@ def build_model(model_id: str | None = None):
         # Bug 4 is supposed to demonstrate. The two can't be reconciled: the
         # minimum thinking budget is 1024 tokens, well above our 300.
         thinking={"type": "disabled"},
+        # Without this the LLM span reports the gateway *routing* id
+        # (`bedrock/…`) as ls_model_name, which has no LangSmith price entry, so
+        # token usage is recorded but cost stays null. Client-level metadata is
+        # merged last and so wins over the ls_* params the model derives itself.
+        metadata=ls_model_identity(resolved_model_id),
     )
 
 

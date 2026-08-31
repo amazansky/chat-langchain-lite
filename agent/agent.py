@@ -1,3 +1,5 @@
+import os
+
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -47,7 +49,12 @@ def build_agent():
 
 
 def _config(thread_id: str | None = None) -> RunnableConfig:
-    metadata = {"demo": "true", "demo_type": "chat-lc-lite", "model": _model_id()}
+    metadata = {
+        "demo": "true",
+        "demo_type": "chat-lc-lite",
+        "model": _model_id(),
+        "environment": os.getenv("CHAT_LANGCHAIN_LITE_ENV", "local"),
+    }
     if thread_id:
         metadata["thread_id"] = thread_id
     return RunnableConfig(
