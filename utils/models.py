@@ -52,6 +52,14 @@ def build_model(model_id: str | None = None):
         base_url=MODEL_CONFIG["base_url"],
         api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
         max_tokens=300,
+        # Newer Sonnets switch extended thinking on by themselves as soon as
+        # tools are bound, and thinking tokens are spent from max_tokens. With
+        # the intentional max_tokens=300 bug that budget is often gone before
+        # any text block is emitted, so the agent returns *nothing* — blank in
+        # the UI, empty `output` in evals — instead of the truncated answer
+        # Bug 4 is supposed to demonstrate. The two can't be reconciled: the
+        # minimum thinking budget is 1024 tokens, well above our 300.
+        thinking={"type": "disabled"},
     )
 
 
