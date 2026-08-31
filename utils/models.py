@@ -50,7 +50,11 @@ def build_model(model_id: str | None = None):
         model=model_id or resolve_model_id(),
         model_provider=MODEL_CONFIG["provider"],
         base_url=MODEL_CONFIG["base_url"],
-        api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
+        # One key for everything: the agent, the offline evaluators, Context
+        # Hub and cleanup all authenticate with LANGSMITH_API_KEY. It must
+        # carry the `gateway:invoke` permission or the Gateway answers with a
+        # bare `403 Forbidden` that says nothing about why.
+        api_key=os.environ["LANGSMITH_API_KEY"],
         max_tokens=300,
         # Newer Sonnets switch extended thinking on by themselves as soon as
         # tools are bound, and thinking tokens are spent from max_tokens. With

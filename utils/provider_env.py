@@ -50,6 +50,6 @@ def scrub_ambient_provider_env() -> list[str]:
             "[provider_env] Ignoring inherited "
             + ", ".join(removed)
             + " — this project authenticates to the LangSmith Gateway with "
-            "LANGSMITH_API_KEY / LANGSMITH_API_KEY_GATEWAY instead."
+            "LANGSMITH_API_KEY instead."
         )
     return removed

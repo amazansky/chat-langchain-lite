@@ -17,7 +17,12 @@ jobs:
     env:
       LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
       LANGSMITH_PROJECT: ${{ secrets.LANGSMITH_PROJECT }}
-      LANGSMITH_API_KEY_GATEWAY: ${{ secrets.LANGSMITH_API_KEY_GATEWAY }}
+      # LANGSMITH_API_KEY above is the only key the demo needs — it covers
+      # tracing AND the agent's model calls through the Gateway, so it must
+      # have the `gateway:invoke` permission. The old separate
+      # LANGSMITH_API_KEY_GATEWAY secret was the one thing the agent used that
+      # nothing else did, so it went stale unnoticed and the Gateway returned
+      # `403 Forbidden` on every run while the rest of the job looked fine.
       LANGSMITH_WORKSPACE_ID: ${{ secrets.LANGSMITH_WORKSPACE_ID }}
       DEMO_PRESENTER: ${{ vars.DEMO_PRESENTER }}
       LANGSMITH_TRACING: "true"
