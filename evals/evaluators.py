@@ -6,6 +6,8 @@ the format Engine emits when proposing generated examples to a dataset,
 so anything Engine adds is scored the same way.
 """
 
+import os
+
 from anthropic import Anthropic
 
 _anthropic_client = None
@@ -14,7 +16,10 @@ _anthropic_client = None
 def _get_anthropic_client() -> Anthropic:
     global _anthropic_client
     if _anthropic_client is None:
-        _anthropic_client = Anthropic()
+        _anthropic_client = Anthropic(
+            api_key=os.environ["LANGSMITH_API_KEY"],
+            base_url="https://gateway.smith.langchain.com",
+        )
     return _anthropic_client
 
 
@@ -52,7 +57,7 @@ def _judge_assertion(criterion: str, output: str, tools_called: list[str]) -> fl
         "Does the response satisfy the assertion? Answer ONLY 'yes' or 'no'."
     )
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="bedrock/anthropic.claude-haiku-4-5",
         max_tokens=16,
         system=system_prompt,
         messages=[{"role": "user", "content": user_msg}],

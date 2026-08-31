@@ -50,7 +50,6 @@ cp .env.example .env
 
 Edit `.env`:
 ```
-ANTHROPIC_API_KEY=your-key
 LANGSMITH_API_KEY=your-demo-workspace-api-key
 LANGSMITH_PROJECT=chat-lc-lite
 LANGSMITH_WORKSPACE_ID=your-demo-workspace-id
@@ -178,7 +177,6 @@ Six online evaluators are registered by `python -m scripts.setup`: `security_adv
 `.github/workflows/evals.yml` runs automatically on every PR to `main`.
 
 Add these secrets to your repo (Settings → Secrets → Actions):
-- `ANTHROPIC_API_KEY`
 - `LANGSMITH_API_KEY`
 - `LANGSMITH_PROJECT`
 - `LANGSMITH_WORKSPACE_ID`

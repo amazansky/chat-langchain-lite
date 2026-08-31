@@ -14,9 +14,9 @@ from langchain.chat_models import init_chat_model
 # policies (PII / secrets / allow-lists / cost caps) are enforced.
 # MODEL_CONFIG is the single source the frontend's Gateway pane reads.
 MODEL_CONFIG = {
-    "model": "claude-sonnet-4-6",
+    "model": "bedrock/anthropic.claude-sonnet-5",
     "provider": "anthropic",
-    "base_url": "https://gateway.smith.langchain.com/anthropic",
+    "base_url": "https://gateway.smith.langchain.com",
 }
 model = init_chat_model(
     model=MODEL_CONFIG["model"],
@@ -24,7 +24,6 @@ model = init_chat_model(
     base_url=MODEL_CONFIG["base_url"],
     api_key=os.environ["LANGSMITH_API_KEY_GATEWAY"],
     max_tokens=300,
-    temperature=0,
 )
 
 # --- Anthropic ---
